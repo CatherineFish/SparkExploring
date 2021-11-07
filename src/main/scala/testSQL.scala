@@ -5,6 +5,8 @@ import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.functions.array_contains
 
+import org.apache.spark.sql.functions._
+
 object testSQL {
 
   def AddUpdateSelectExample(spark: SparkSession): Unit = {
@@ -125,6 +127,60 @@ object testSQL {
       .show(false)
   }
 
+  def GroupByExample(spark: SparkSession): Unit = {
+    import spark.implicits._
+
+    val simpleData = Seq(("James","Sales","NY",90000,34,10000),
+      ("Michael","Sales","NY",86000,56,20000),
+      ("Robert","Sales","CA",81000,30,23000),
+      ("Maria","Finance","CA",90000,24,23000),
+      ("Raman","Finance","CA",99000,40,24000),
+      ("Scott","Finance","NY",83000,36,19000),
+      ("Jen","Finance","NY",79000,53,15000),
+      ("Jeff","Marketing","CA",80000,25,18000),
+      ("Kumar","Marketing","NY",91000,50,21000)
+    )
+    val df = simpleData.toDF("employee_name","department","state","salary","age","bonus")
+    df.show()
+
+    df.groupBy("department")
+      .agg(
+        sum("salary").as("sum_salary"),
+        avg("salary").as("avg_salary"),
+        sum("bonus").as("sum_bonus"),
+        stddev("bonus").as("stddev_bonus"))
+      .where(col("sum_bonus") > 50000)
+      .show(false)
+  }
+
+  def JoinExample(spark: SparkSession): Unit = {
+    spark.sparkContext.setLogLevel("ERROR")
+
+    val emp = Seq((1,"Smith",-1,"2018","10","M",3000),
+      (2,"Rose",1,"2010","20","M",4000),
+      (3,"Williams",1,"2010","10","M",1000),
+      (4,"Jones",2,"2005","10","F",2000),
+      (5,"Brown",2,"2010","40","",-1),
+      (6,"Brown",2,"2010","50","",-1)
+    )
+    val empColumns = Seq("emp_id","name","superior_emp_id","year_joined","emp_dept_id","gender","salary")
+    import spark.sqlContext.implicits._
+    val empDF = emp.toDF(empColumns:_*)
+    empDF.show(false)
+
+    val dept = Seq(("Finance",10),
+      ("Marketing",20),
+      ("Sales",30),
+      ("IT",40)
+    )
+
+    val deptColumns = Seq("dept_name","dept_id")
+    val deptDF = dept.toDF(deptColumns:_*)
+    deptDF.show(false)
+
+    empDF.join(deptDF,empDF("emp_dept_id") ===  deptDF("dept_id"),"inner")
+      .show(false)
+  }
 
 
   def main(args: Array[String]): Unit = {
@@ -135,8 +191,9 @@ object testSQL {
       .getOrCreate()
 
     //AddUpdateSelectExample(spark)
-    FilterExample(spark)
+    //FilterExample(spark)
+    //GroupByExample(spark)
+    JoinExample(spark)
     spark.stop()
-
   }
 }
