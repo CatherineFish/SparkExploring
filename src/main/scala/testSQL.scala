@@ -2,6 +2,9 @@ import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.{Row, SparkSession}
 
+import org.apache.spark.sql.types.ArrayType
+import org.apache.spark.sql.functions.array_contains
+
 object testSQL {
 
   def AddUpdateSelectExample(spark: SparkSession): Unit = {
@@ -74,6 +77,55 @@ object testSQL {
     spark.sql("SELECT salary*100 as salary, salary*-1 as CopiedColumn, 'USA' as country FROM PERSON").show()
   }
 
+  def FilterExample(spark: SparkSession): Unit = {
+
+    spark.sparkContext.setLogLevel("ERROR")
+
+    val arrayStructureData = Seq(
+      Row(Row("James","","Smith"),List("Java","Scala","C++"),"OH","M"),
+      Row(Row("Anna","Rose",""),List("Spark","Java","C++"),"NY","F"),
+      Row(Row("Julia","","Williams"),List("CSharp","VB"),"OH","F"),
+      Row(Row("Maria","Anne","Jones"),List("CSharp","VB"),"NY","M"),
+      Row(Row("Jen","Mary","Brown"),List("CSharp","VB"),"NY","M"),
+      Row(Row("Mike","Mary","Williams"),List("Python","VB"),"OH","M")
+    )
+
+    val arrayStructureSchema = new StructType()
+      .add("name",new StructType()
+        .add("firstname",StringType)
+        .add("middlename",StringType)
+        .add("lastname",StringType))
+      .add("languages", ArrayType(StringType))
+      .add("state", StringType)
+      .add("gender", StringType)
+
+    val df = spark.createDataFrame(
+      spark.sparkContext.parallelize(arrayStructureData),arrayStructureSchema)
+    df.printSchema()
+    df.show()
+
+    //Condition
+    df.filter(df("state") === "OH")
+      .show(false)
+
+    //SQL Expression
+    df.filter("gender == 'M'")
+      .show(false)
+
+    //multiple condition
+    df.filter(df("state") === "OH" && df("gender") === "M")
+      .show(false)
+
+    //Array condition
+    df.filter(array_contains(df("languages"),"Java"))
+      .show(false)
+
+    //Struct condition
+    df.filter(df("name.lastname") === "Williams")
+      .show(false)
+  }
+
+
 
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
@@ -82,7 +134,8 @@ object testSQL {
       .config("spark.master", "local")
       .getOrCreate()
 
-    AddUpdateSelectExample(spark)
+    //AddUpdateSelectExample(spark)
+    FilterExample(spark)
     spark.stop()
 
   }
