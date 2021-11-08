@@ -19,20 +19,20 @@ object testStreaming {
 
     import spark.implicits._
 
-    // Create DataFrame representing the stream of input lines from connection to host:port
+    // Создание DataFrame, представляющего поток входных строк от соединения с host:port
     val lines = spark.readStream
       .format("socket")
       .option("host", host)
       .option("port", port)
       .load()
 
-    // Split the lines into words
+    // Разбиение строк на слова
     val words = lines.as[String].flatMap(_.split(" "))
 
-    // Generate running word count
+    // Генерация текущего количества слов
     val wordCounts = words.groupBy("value").count()
 
-    // Start running the query that prints the running counts to the console
+    // Запуск запроса, который выводит текущие счетчики на консоль
     val query = wordCounts.writeStream
       .outputMode("complete")
       .format("console")

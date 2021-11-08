@@ -64,7 +64,7 @@ object testMLib {
      * Обучить модель (логистическая регрессия)
   */
   def PipelineExample(spark: SparkSession): Unit = {
-    // Prepare training documents from a list of (id, text, label) tuples.
+    // Подготовка train, представляющих собой кортежи (id, text, label)
     val training = spark.createDataFrame(Seq(
       (0L, "a b c d e spark", 1.0),
       (1L, "b d", 0.0),
@@ -72,7 +72,7 @@ object testMLib {
       (3L, "hadoop mapreduce", 0.0)
     )).toDF("id", "text", "label")
 
-    // Configure an ML pipeline, which consists of three stages: tokenizer, hashingTF, and lr.
+    // Конфигурация ML Pipeline: токенизатор, hashingTF, логистическая регрессия
     val tokenizer = new Tokenizer()
       .setInputCol("text")
       .setOutputCol("words")
@@ -86,19 +86,19 @@ object testMLib {
     val pipeline = new Pipeline()
       .setStages(Array(tokenizer, hashingTF, lr))
 
-    // Fit the pipeline to training documents.
+    // Применение fit к train
     val model = pipeline.fit(training)
 
-    // Now we can optionally save the fitted pipeline to disk
+    // Можно сохранить текущее состояние pipeline
     model.write.overwrite().save("/tmp/spark-logistic-regression-model")
 
-    // We can also save this unfit pipeline to disk
+    // До применения fit тоже можно было сохранить pipeline
     pipeline.write.overwrite().save("/tmp/unfit-lr-model")
 
-    // And load it back in during production
+    // Можно загрузить сохраненное состояние pipeline
     val sameModel = PipelineModel.load("/tmp/spark-logistic-regression-model")
 
-    // Prepare test documents, which are unlabeled (id, text) tuples.
+    // Подготовка test - кортежи без меток (id, text)
     val test = spark.createDataFrame(Seq(
       (4L, "spark i j k"),
       (5L, "l m n"),
@@ -106,7 +106,7 @@ object testMLib {
       (7L, "apache hadoop")
     )).toDF("id", "text")
 
-    // Make predictions on test documents.
+    // Предсказание на test
     model.transform(test)
       .select("id", "text", "probability", "prediction")
       .collect()
@@ -118,52 +118,52 @@ object testMLib {
 
   // Пример логистической регрессии - RandomForest
   def RandomForestClassifierExample(spark: SparkSession): Unit = {
-    // Load and parse the data file, converting it to a DataFrame.
+    // загрузка и парсинг данных, преобразование в DataFrame
     val data = spark.read.format("libsvm").load("data/libsvm_data.txt")
 
-    // Index labels, adding metadata to the label column.
-    // Fit on whole dataset to include all labels in index.
+    // Индексирование меток путём добавления метаданных в столбец меток
+    // Обучение на всём датасете
     val labelIndexer = new StringIndexer()
       .setInputCol("label")
       .setOutputCol("indexedLabel")
       .fit(data)
-    // Automatically identify categorical features, and index them.
-    // Set maxCategories so features with > 4 distinct values are treated as continuous.
+    // Автоматическое индексирование категориальных признаков, их индексация
+    // Установка значения maxCategories
     val featureIndexer = new VectorIndexer()
       .setInputCol("features")
       .setOutputCol("indexedFeatures")
       .setMaxCategories(4)
       .fit(data)
 
-    // Split the data into training and test sets (30% held out for testing).
+    // Разделение данных на train (30%) и test
     val Array(trainingData, testData) = data.randomSplit(Array(0.7, 0.3))
 
-    // Train a RandomForest model.
+    // Обучение модели RandomForest
     val rf = new RandomForestClassifier()
       .setLabelCol("indexedLabel")
       .setFeaturesCol("indexedFeatures")
       .setNumTrees(10)
 
-    // Convert indexed labels back to original labels.
+    // Конвертирование индексированных меток обратно в исходные
     val labelConverter = new IndexToString()
       .setInputCol("prediction")
       .setOutputCol("predictedLabel")
       .setLabels(labelIndexer.labelsArray(0))
 
-    // Chain indexers and forest in a Pipeline.
+    // Формирование Pipeline
     val pipeline = new Pipeline()
       .setStages(Array(labelIndexer, featureIndexer, rf, labelConverter))
 
-    // Train model. This also runs the indexers.
+    // Обучение модели
     val model = pipeline.fit(trainingData)
 
-    // Make predictions.
+    // Предсказание
     val predictions = model.transform(testData)
 
-    // Select example rows to display.
+    // Выбор строк для демонстрации
     predictions.select("predictedLabel", "label", "features").show(5)
 
-    // Select (prediction, true label) and compute test error.
+    // Выбор (prediction, true label) и вычисление ошибки на test
     val evaluator = new MulticlassClassificationEvaluator()
       .setLabelCol("indexedLabel")
       .setPredictionCol("prediction")
@@ -183,11 +183,10 @@ object testMLib {
       .config("spark.master", "local")
       .getOrCreate()
 
-    // Запуск всех примеров
-    //CorrelationExample(spark)
-    // ChiSquareTestExample(spark)
-
-    //PipelineExample(spark)
+    // Запуск примеров. Лучше запускать по одному для более понятного вывода
+    CorrelationExample(spark)
+    ChiSquareTestExample(spark)
+    PipelineExample(spark)
     RandomForestClassifierExample(spark)
 
     spark.stop()

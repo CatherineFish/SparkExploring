@@ -9,6 +9,7 @@ import org.apache.spark.sql.functions._
 
 object testSQL {
 
+  // Пример добавления/обновления/удаления столбцов и выполнения запросов типа select к таблицам
   def AddUpdateSelectExample(spark: SparkSession): Unit = {
     val dataRows = Seq(Row(Row("James;","","Smith"),"36636","M","3000"),
       Row(Row("Michael","Rose",""),"40288","M","4000"),
@@ -33,27 +34,27 @@ object testSQL {
     df2.select("name.firstname","name.lastname").show(false)
     df2.select("name.*").show(false)
 
-    //Change the column data type
+    // Изменение типа данных в столбце
     df2.withColumn("salary",df2("salary").cast("Integer"))
 
-    //Derive a new column from existing
+    // Создание нового столбца из существующего
     val df4=df2.withColumn("CopiedColumn",df2("salary")* -1)
 
-    //Transforming existing column
+    // Преобразование существующего столбца
     val df5 = df2.withColumn("salary",df2("salary")*100)
 
-    //Renaming a column.
+    // Переименование столбца
     val df3=df2.withColumnRenamed("gender","sex")
     df3.printSchema()
 
-    //Droping a column
+    // Удаление столбца
     val df6=df4.drop("CopiedColumn")
     println(df6.columns.contains("CopiedColumn"))
 
-    //Adding a literal value
+    // Добавление литерального значения
     df2.withColumn("Country", lit("USA")).printSchema()
 
-    //Retrieving
+    // Просмотр столбцов
     df2.show(false)
     df2.select("name").show(false)
     df2.select("name.firstname").show(false)
@@ -79,6 +80,7 @@ object testSQL {
     spark.sql("SELECT salary*100 as salary, salary*-1 as CopiedColumn, 'USA' as country FROM PERSON").show()
   }
 
+  // Пример выполнения запроса типа Filter к таблицам
   def FilterExample(spark: SparkSession): Unit = {
 
     spark.sparkContext.setLogLevel("ERROR")
@@ -106,27 +108,28 @@ object testSQL {
     df.printSchema()
     df.show()
 
-    //Condition
+    // Условие
     df.filter(df("state") === "OH")
       .show(false)
 
-    //SQL Expression
+    // SQL выражение
     df.filter("gender == 'M'")
       .show(false)
 
-    //multiple condition
+    // Множественное условие
     df.filter(df("state") === "OH" && df("gender") === "M")
       .show(false)
 
-    //Array condition
+    // Массив условий
     df.filter(array_contains(df("languages"),"Java"))
       .show(false)
 
-    //Struct condition
+    // Условие на конструкцию
     df.filter(df("name.lastname") === "Williams")
       .show(false)
   }
 
+  // Пример выполнения запроса типа GroupBy к таблицам
   def GroupByExample(spark: SparkSession): Unit = {
     import spark.implicits._
 
@@ -153,6 +156,7 @@ object testSQL {
       .show(false)
   }
 
+  // Пример выполнения запроса типа Join к таблицам
   def JoinExample(spark: SparkSession): Unit = {
     spark.sparkContext.setLogLevel("ERROR")
 
@@ -190,10 +194,12 @@ object testSQL {
       .config("spark.master", "local")
       .getOrCreate()
 
-    //AddUpdateSelectExample(spark)
-    //FilterExample(spark)
-    //GroupByExample(spark)
+    // Запуск примеров. Лучше запускать по одному для более понятного вывода
+    AddUpdateSelectExample(spark)
+    FilterExample(spark)
+    GroupByExample(spark)
     JoinExample(spark)
+
     spark.stop()
   }
 }
